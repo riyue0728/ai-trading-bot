@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+
+# Logs & Data
+logs/
+screenshots/
+bot.log
+debug_output.txt
+
+# Artifacts
+ClawdBot_Deploy.zip
+*.zip
+
+# Environment
+venv/
+.env
+
+# System
+.DS_Store
+Thumbs.db
