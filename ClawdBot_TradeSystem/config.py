@@ -28,10 +28,15 @@ WECHAT_WEBHOOK_URL = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=dbf4f
 # --- 3. AI 大脑设置 (双脑架构) ---
 
 # [A] 视觉模型 (The Eyes) - 负责看图
-# 当前: Doubao-Seed-1.6-vision (最强视觉)
-VISION_MODEL_PROVIDER = "doubao"    # 选项: "qwen", "doubao", "openai"
-VISION_API_KEY = "27ef94bd-bde2-4fbc-b060-57845559b0b4"    # 填入火山引擎 API Key
-VISION_ENDPOINT_ID = "ep-m-20260201100636-zjkp4" # Doubao-Seed-1.6-vision
+# 当前: Qwen3-VL-Plus (通义千问) / 备用: Doubao-Seed-1.6-vision
+VISION_MODEL_PROVIDER = "qwen"    # 选项: "qwen", "doubao"
+VISION_API_KEY = "sk-6abacc70e5024abb9c591547321a78f7"    # 通义千问 API Key
+VISION_ENDPOINT_ID = "qwen3-vl-plus"  # 模型名称
+
+# 通义千问配置
+QWEN_API_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+QWEN_API_KEY = "sk-6abacc70e5024abb9c591547321a78f7"
+QWEN_MODEL = "qwen3-vl-plus"
 
 # [B] 逻辑模型 (The Brain) - 负责决策 & RAG
 # 当前: DeepSeek-V3 (最强逻辑)
