@@ -1,21 +1,24 @@
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.so
+.Python
+*.egg-info/
+dist/
+build/
 
-# Logs & Data
+# Logs & Screenshots
 logs/
 screenshots/
-bot.log
-debug_output.txt
+*.log
 
-# Artifacts
-ClawdBot_Deploy.zip
-*.zip
-
-# Environment
-venv/
-.env
-
-# System
+# OS
 .DS_Store
 Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Archive
+_archive/
