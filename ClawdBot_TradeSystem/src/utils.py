@@ -257,8 +257,34 @@ def make_resonance_decision(signal_data, vision_results):
         # 查找JSON内容
         json_match = re.search(r'\{[\s\S]*\}', analysis_text)
         if json_match:
-            result_json = json_match.group()
-            return result_json
+            result_json_str = json_match.group()
+            
+            # 🔧 强制重新排序 JSON 字段（1分钟 → 5分钟 → 25分钟）
+            try:
+                data = json.loads(result_json_str)
+                
+                # 正确顺序
+                period_order = ["1分钟可见标注", "5分钟可见标注", "25分钟可见标注"]
+                
+                # 如果周期分析存在，强制重新排序
+                if "周期分析" in data:
+                    cycle_analysis = data["周期分析"]
+                    reordered = {}
+                    for key in period_order:
+                        if key in cycle_analysis:
+                            reordered[key] = cycle_analysis[key]
+                    # 添加其他字段
+                    for k, v in cycle_analysis.items():
+                        if k not in reordered:
+                            reordered[k] = v
+                    data["周期分析"] = reordered
+                    logger.info("🔧 已强制重新排序周期分析字段：1分钟 → 5分钟 → 25分钟")
+                
+                result_json_str = json.dumps(data, ensure_ascii=False)
+            except Exception as e:
+                logger.warning(f"JSON重新排序失败: {e}")
+            
+            return result_json_str
         else:
             logger.error("无法解析分析结果")
             return '{"决策":"观望","理由":"分析结果解析失败"}'
