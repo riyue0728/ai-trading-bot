@@ -193,4 +193,4 @@ async def webhook(request: Request, background_tasks: BackgroundTasks):
         return {"status": "error", "msg": str(e)}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host=config.FASTAPI_HOST, port=config.FASTAPI_PORT)
+    uvicorn.run(app, host=config.HOST, port=config.PORT)
