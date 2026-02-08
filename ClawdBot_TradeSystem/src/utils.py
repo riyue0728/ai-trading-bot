@@ -63,7 +63,88 @@ ANALYSIS_PROMPT = """你是一个严格执行规则的缠论多周期分析师�
 """
 
 
+# --- 缠论分析专用提示词 ---
+ANALYSIS_PROMPT = """你是一个严格执行规则的缠论多周期分析师。
+
+## 任务
+识别每个时间周期图表上，**右侧可见区域内最新1-4根K线**上的买卖点标注。
+
+## 重要规则
+- ✅ **关注右侧可见区域**（通常是最新1-4根K线）
+- ✅ **这1-4根K线上可能有多个标注**（大级别 + 本级别 + 次级别）
+- ✅ **全部识别并列出**
+
+## 识别要求
+查看每张图表右侧可见区域：
+- 通常是最新的1-4根K线
+- 如果有标注，全部识别
+- 格式："标注1 + 标注2 + 标注3"
+
+## 级别判断
+| 字样大小 | 颜色 | 级别 |
+|---------|------|------|
+| 最小 | 绿色/橙色 | 次级别（笔） |
+| 中等 | 粉色/红色 | 本级别（线段） |
+| 较大 | 黄色/蓝色 | 大级别（趋势） |
+
 # --- 工具函数 ---
+
+def get_gemini_client():
+    """获取 Google Gemini 客户端"""
+    return None  # Gemini 使用 requests 直接调用
+
+def analyze_with_gemini(image_path):
+    """使用 Gemini 分析图片"""
+    try:
+        with open(image_path, 'rb') as f:
+            img_b64 = base64.b64encode(f.read()).decode()
+        
+        api_key = getattr(config, 'GEMINI_API_KEY', '')
+        model = getattr(config, 'GEMINI_MODEL', 'gemini-2.5-flash')
+        
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+        
+        prompt = """你是缠论专家。请分析这张K线图：
+
+图片布局：
+- 左侧 = 1分钟周期
+- 右上 = 5分钟周期  
+- 右下 = 25分钟周期
+
+请识别每张图右侧最新1-4根K线上的买卖点标注，输出JSON格式：
+{
+    "1分钟可见标注": "...",
+    "5分钟可见标注": "...",
+    "25分钟可见标注": "..."
+}
+格式示例："蓝色大级别2卖 + 红色本级别1买" 或 "无"
+只输出JSON，不要其他文字。"""
+
+        payload = {
+            "contents": [{
+                "parts": [
+                    {"text": prompt},
+                    {"inline_data": {"mime_type": "image/png", "data": img_b64}}
+                ]
+            }]
+        }
+        
+        resp = requests.post(url, json=payload, timeout=90)
+        
+        if resp.status_code == 200:
+            result = resp.json()
+            if "candidates" in result:
+                text = result["candidates"][0]["content"]["parts"][0]["text"]
+                # 清理 markdown 格式
+                text = text.replace("```json", "").replace("```", "").strip()
+                return text
+        else:
+            logger.error(f"Gemini API 错误: {resp.status_code} - {resp.text[:200]}")
+            return None
+            
+    except Exception as e:
+        logger.error(f"Gemini 分析失败: {e}")
+        return None
 
 def get_doubao_client():
     """获取火山引擎 OpenAI 兼容客户端"""
@@ -168,32 +249,61 @@ def analyze_multi_images(image_paths):
     """视觉分析"""
     results = {}
     
-    # 根据配置选择客户端
     provider = getattr(config, 'VISION_MODEL_PROVIDER', 'doubao').lower()
-    if provider == 'qwen':
+    
+    # Gemini 模式
+    if provider == 'gemini':
+        logger.info(f"使用 Google Gemini 视觉模型: {getattr(config, 'GEMINI_MODEL', 'gemini-2.5-flash')}")
+        logger.info("正在用 Gemini 分析多周期图表...")
+        
+        for path in image_paths:
+            logger.info(f"分析图片: {os.path.basename(path)}")
+            gemini_result = analyze_with_gemini(path)
+            if gemini_result:
+                results["analysis"] = gemini_result
+                logger.info(f"Gemini 分析完成")
+            else:
+                results["analysis"] = '{"1分钟可见标注":"无","5分钟可见标注":"无","25分钟可见标注":"分析失败"}'
+    
+    # 通义千问模式
+    elif provider == 'qwen':
         client = get_qwen_client()
-        model_id = getattr(config, 'QWEN_MODEL', 
-                  getattr(config, 'VISION_ENDPOINT_ID', 'qwen3-vl-plus'))
+        model_id = getattr(config, 'VISION_ENDPOINT_ID', 'qwen3-vl-plus')
         logger.info(f"使用通义千问视觉模型: {model_id}")
+        
+        for path in image_paths:
+            base64_image = encode_image(path)
+            response = client.chat.completions.create(
+                model=model_id,
+                messages=[{
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": ANALYSIS_PROMPT},
+                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{base64_image}"}}
+                    ]
+                }]
+            )
+            results["analysis"] = response.choices[0].message.content
+    
+    # 火山引擎模式
     else:
         client = get_doubao_client()
         model_id = getattr(config, 'VISION_ENDPOINT_ID', config.VISION_ENDPOINT_ID)
         logger.info(f"使用火山引擎视觉模型: {model_id}")
-    
-    logger.info("正在分析多周期图表...")
-    
-    for path in image_paths:
-        base64_image = encode_image(path)
-        response = client.chat.completions.create(
-            model=model_id,
-            messages=[
-                {"role": "user", "content": [
-                    {"type": "text", "text": ANALYSIS_PROMPT},
-                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{base64_image}"}},
-                ]}
-            ],
-        )
-        results["analysis"] = response.choices[0].message.content
+        
+        for path in image_paths:
+            base64_image = encode_image(path)
+            response = client.chat.completions.create(
+                model=model_id,
+                messages=[{
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": ANALYSIS_PROMPT},
+                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{base64_image}"}}
+                    ]
+                }]
+            )
+            results["analysis"] = response.choices[0].message.content
         
     return results
 
