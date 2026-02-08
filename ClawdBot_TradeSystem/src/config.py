@@ -6,8 +6,10 @@ import os
 
 # --- 1. TradingView 设置 ---
 # 你的 "万能钥匙" (Session ID)
-# 获取方式: 浏览器 -> F12 -> Application -> Cookies -> sessionid
 TRADINGVIEW_COOKIE = "nbizz42kdrbabk9r80e5a9q7z7gnlutx" 
+
+# 默认图表地址（Webhook 不传 chart_url 时使用）
+DEFAULT_CHART_URL = "https://cn.tradingview.com/chart/PP8uCQUu/" 
 
 # --- 2. 企业微信 (WeChat Work) 设置 ---
 WECHAT_WEBHOOK_URL = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=dbf4f375-3c85-4050-b64d-0f862167be4c" 

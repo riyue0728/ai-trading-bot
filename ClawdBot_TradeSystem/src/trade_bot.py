@@ -86,7 +86,7 @@ def process_signal_background(data):
         signal = data.get('signal', 'Unknown')
         level = data.get('level', '1m')
         price = data.get('price')
-        chart_url = data.get('chart_url', "https://cn.tradingview.com/chart/")
+        chart_url = data.get('chart_url', getattr(config, 'DEFAULT_CHART_URL', 'https://cn.tradingview.com/chart/PP8uCQUu/'))
         
         logger.info(f"⚙️ 开始后台处理: {ticker} {level} {signal}")
         
