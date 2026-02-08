@@ -25,7 +25,7 @@ VISION_ENDPOINT_ID = "qwen3-vl-plus"
 
 # Google Gemini 配置
 GEMINI_API_KEY = "AIzaSyCQJn7WmqffRstHT5D0ZxKx1vEytPK5LQk"
-GEMINI_MODEL = "gemini-2.5-flash"  # 免费额度充足
+GEMINI_MODEL = "gemini-2.5-pro"  # 最强视觉模型
 
 # [B] 逻辑模型 (The Brain) - 负责决策
 LOGIC_MODEL_PROVIDER = "doubao"
