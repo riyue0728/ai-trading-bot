@@ -104,7 +104,9 @@ def process_signal_background(data):
         
         # 2. 多周期截图
         screenshot_paths = []
-        if level == "1m":
+        if level in ["1m", "5m", "5"]:
+            # 1分钟或5分钟背驰：做1m/5m/25m三周期共振分析
+            # 因为1分钟趋势=5分钟线段=25分钟一笔
             logger.info("⚡ 触发 1m/5m/25m 多周期共振分析...")
             screenshot_paths = utils.capture_multi_timeframe(chart_url, ticker, ["1", "5", "25"])
         else:
