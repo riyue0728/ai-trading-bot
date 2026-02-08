@@ -35,7 +35,7 @@ LOGIC_ENDPOINT_ID = "ep-m-20260201094201-4465b"
 
 # --- 4. 服务设置 ---
 HOST = "0.0.0.0"
-PORT = 5001
+PORT = 80
 DEBUG_MODE = True
 
 # --- 5. 风控设置 ---
