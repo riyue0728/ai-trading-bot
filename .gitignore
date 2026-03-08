@@ -22,3 +22,17 @@ Thumbs.db
 
 # Archive
 _archive/
+
+# Config (contains sensitive API keys)
+src/config.py
+
+# Sensitive files
+signals_history.json
+prediction.json
+trading_records.xlsx
+memory/
+health_check.sh
+
+# MCP config
+*.env
+.env.local
