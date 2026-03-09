@@ -28,7 +28,7 @@ GOLD_API_KEY = "goldapi-bjhc1smldqlqws-io"
 WECHAT_WEBHOOK_URL = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=dbf4f375-3c85-4050-b64d-0f862167be4c"
 
 # AI 配置
-GEMINI_API_KEY = "AIzaSyAJYOcBuiwzpVKDSbvNYaJfkywQ8ANXi1U"
+GEMINI_API_KEY = "AIzaSyCg-nQxEmFh5cAeb1V7OEOsErMKIv2u_j0"
 GEMINI_MODEL = "gemini-2.5-flash"
 
 def get_xau_price():
@@ -41,8 +41,30 @@ def get_xau_price():
             data = resp.json()
             return float(data.get('price', 0))
     except Exception as e:
-        logger.warning(f"获取价格失败: {e}")
+        logger.warning(f"获取XAU价格失败: {e}")
     return None
+
+def get_btc_price():
+    """获取 BTC/USDT 当前价格 (Gate.io API)"""
+    try:
+        url = "https://api.gateio.ws/api/v4/spot/tickers?currency_pair=BTC_USDT"
+        resp = requests.get(url, timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            if data and len(data) > 0:
+                return float(data[0].get('last', 0))
+    except Exception as e:
+        logger.warning(f"获取BTC价格失败: {e}")
+    return None
+
+def get_price(ticker):
+    """根据品种获取当前价格"""
+    ticker_upper = ticker.upper()
+    if 'BTC' in ticker_upper:
+        return get_btc_price()
+    else:
+        # 默认XAU
+        return get_xau_price()
 
 def notify_wechat(message):
     """发送企业微信通知"""
@@ -173,12 +195,13 @@ def check_and_close_positions():
         
         signals = json.loads(SIGNALS_FILE.read_text(encoding='utf-8'))
         
-        current_price = get_xau_price()
-        if not current_price:
-            logger.warning("无法获取当前价格")
-            return
-        
-        logger.info(f"🔔 价格检查: XAU=${current_price:.2f}")
+        # 获取所有相关品种的价格
+        tickers = set(s.get("ticker", "XAU") for s in signals if s.get("status") == "pending")
+        prices = {}
+        for t in tickers:
+            prices[t] = get_price(t)
+            if prices[t]:
+                logger.info(f"🔔 价格检查: {t}=${prices[t]:.2f}")
         
         updated = False
         for s in signals:
@@ -189,13 +212,19 @@ def check_and_close_positions():
             direction = s.get("direction")
             entry_price = s.get("entry_price", 0)
             stop_loss = s.get("stop_loss", 0)
-            tp1 = s.get("take_profit_1", 0)
-            tp2 = s.get("take_profit_2", 0)
+            tp1 = s.get("tp1") or s.get("take_profit_1", 0)
+            tp2 = s.get("tp2") or s.get("take_profit_2", 0)
             ai_decision = s.get("ai_decision", "")
             just_reached_t1 = s.get("just_reached_t1", False)
             pending_ai_decision = s.get("pending_ai_decision", False)
             
             if not entry_price or entry_price == 0:
+                continue
+            
+            # 获取当前持仓品种的价格
+            current_price = prices.get(ticker)
+            if not current_price:
+                logger.warning(f"无法获取 {ticker} 当前价格，跳过")
                 continue
             
             # 计算浮动盈亏
@@ -233,13 +262,18 @@ def check_and_close_positions():
                         continue
                     elif pending_ai_decision:
                         # 已标记需要 AI 分析，现在执行
+                        logger.info(f"🔔 开始 T1 AI 分析: {ticker}")
                         s["pending_ai_decision"] = False
                         updated = True
                         
                         # 截图并分析
+                        logger.info("📸 正在截图...")
                         img_b64 = take_screenshot()
+                        logger.info(f"📸 截图完成: {'成功' if img_b64 else '失败'}")
                         if img_b64:
+                            logger.info("🤖 正在 AI 分析...")
                             analysis = analyze_with_gemini_t1(img_b64, direction, entry_price, current_price, tp2)
+                            logger.info(f"🤖 AI 分析完成: {'成功' if analysis else '失败'}")
                             if analysis:
                                 try:
                                     import re
@@ -259,22 +293,30 @@ def check_and_close_positions():
                                         "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                                     }
                                     
+                                    # 先发送AI分析结果通知
+                                    msg = f"🤖 AI T1 分析结果\n" \
+                                          f"方向: {'做多' if direction == 'long' else '做空'}\n" \
+                                          f"入场: ${entry_price}\n" \
+                                          f"当前: ${current_price}\n" \
+                                          f"─────────────────\n" \
+                                          f"📊 分析建议: {advice}\n" \
+                                          f"📝 原因: {reason_text[:200]}...\n" \
+                                          f"信心度: {confidence_text}\n" \
+                                          f"─────────────────\n"
+                                    
                                     if "止盈" in advice:
                                         # AI 建议止盈
+                                        msg += f"✅ 执行止盈，平仓！"
                                         close_reason = "tp"
                                         close_price = current_price
                                         s["close_reason"] = "t1_ai_close"
                                     else:
                                         # AI 建议继续持有
+                                        msg += f"✅ 继续持有到 T2，止损已移至开仓价"
                                         s["stop_loss"] = entry_price  # 止损移到开仓价
-                                        msg = f"🤖 AI 分析结果\n" \
-                                              f"建议: {advice}\n" \
-                                              f"原因: {reason_text}\n" \
-                                              f"信心度: {confidence_text}\n" \
-                                              f"─────────────────\n" \
-                                              f"✅ 已将止损移到开仓价，继续持有到 T2..."
-                                        notify_wechat(msg)
-                                        logger.info(f"🔔 AI 分析: {advice}")
+                                    
+                                    notify_wechat(msg)
+                                    logger.info(f"🔔 AI 分析已通知: {advice}")
                                 except Exception as e:
                                     logger.warning(f"解析 AI 分析失败: {e}")
                                     s["stop_loss"] = entry_price
@@ -313,12 +355,16 @@ def check_and_close_positions():
                         logger.info(f"🔔 达到 T1: {ticker}，等待 AI 分析")
                         continue
                     elif pending_ai_decision:
+                        logger.info(f"🔔 检测到 pending_ai_decision，准备执行 AI 分析")
                         s["pending_ai_decision"] = False
                         updated = True
                         
                         img_b64 = take_screenshot()
+                        logger.info(f"📸 截图: {'成功' if img_b64 else '失败'}")
                         if img_b64:
+                            logger.info("🤖 开始 AI 分析...")
                             analysis = analyze_with_gemini_t1(img_b64, direction, entry_price, current_price, tp2)
+                            logger.info(f"🤖 AI 分析: {'成功' if analysis else '失败'}")
                             if analysis:
                                 try:
                                     import re

@@ -9,6 +9,9 @@ import os
 # 获取方式: 浏览器 -> F12 -> Application -> Cookies -> sessionid
 TRADINGVIEW_COOKIE = "nbizz42kdrbabk9r80e5a9q7z7gnlutx" 
 
+# 默认图表地址
+DEFAULT_CHART_URL = "https://cn.tradingview.com/chart/PP8uCQUu/"
+
 # 默认浏览器窗口大小 (无需修改)
 BROWSER_WIDTH = 1920
 BROWSER_HEIGHT = 1080

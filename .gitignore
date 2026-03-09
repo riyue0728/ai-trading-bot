@@ -36,3 +36,4 @@ health_check.sh
 # MCP config
 *.env
 .env.local
+positions.json
