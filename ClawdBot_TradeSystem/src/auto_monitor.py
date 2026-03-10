@@ -27,9 +27,9 @@ GOLD_API_KEY = "goldapi-bjhc1smldqlqws-io"
 # 企业微信通知
 WECHAT_WEBHOOK_URL = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=dbf4f375-3c85-4050-b64d-0f862167be4c"
 
-# AI 配置
-GEMINI_API_KEY = "AIzaSyCg-nQxEmFh5cAeb1V7OEOsErMKIv2u_j0"
-GEMINI_MODEL = "gemini-2.5-flash"
+# AI 配置 (从 config 导入)
+GEMINI_API_KEY = config.GEMINI_API_KEY
+GEMINI_MODEL = config.GEMINI_MODEL
 
 def get_xau_price():
     """获取 XAU/USD 当前价格"""
