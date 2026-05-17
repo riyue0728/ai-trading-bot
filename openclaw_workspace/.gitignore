@@ -1,0 +1,7 @@
+# Sensitive files - DO NOT upload
+MEMORY.md
+*.md.autosave
+*.log
+*.json.autosave
+heartbeat-state.json
+memory/
